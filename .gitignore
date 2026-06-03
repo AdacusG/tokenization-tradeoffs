@@ -1,0 +1,7 @@
+# Ignore model checkpoints
+out-memo/
+out-memo2/
+
+# Ignore all data within both models besides the prepare.py and prepare2.py files
+data/memo_char/*.{bin,pkl,txt}
+data/memo_2char/*.{bin,pkl,txt}
