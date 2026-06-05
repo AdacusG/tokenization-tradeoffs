@@ -1,10 +1,13 @@
 import itertools
 import random
+import sys
 def gen_memo_data(vocabLength, repeatTimes, fileName):
-    # Only works within range of alphabet.
+    if vocabLength > 52:
+        raise ValueError("vocabLength cannot exceed 52 (26 lowercase + 26 uppercase letters).")
     if vocabLength > 26:
-        raise ValueError("vocabLength must be less than or equal to 26")
-    alphabet = [chr(i) for i in range(97, 97 + vocabLength)]
+        alphabet = [chr(i) for i in range(97, 97 + 26)] + [chr(i) for i in range(65, 65 + (vocabLength - 26))]
+    else:
+        alphabet = [chr(i) for i in range(97, 97 + vocabLength)]
     # Inputs and Outputs are direct copys, where they are all 2 letter combinations of the given alphabet.
     inputs = ["".join(p) for p in itertools.product(alphabet, repeat=2)]
     outputs = inputs.copy()
@@ -22,4 +25,4 @@ def gen_memo_data(vocabLength, repeatTimes, fileName):
         f.writelines(dataset)
     print(f"Generated {len(unique_pairs)} unique mappings.")
 if __name__ == "__main__":
-    gen_memo_data(6, 100, "input.txt")
+    gen_memo_data(int(sys.argv[1]), 100, "input.txt")

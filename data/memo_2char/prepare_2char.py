@@ -19,7 +19,7 @@ with open(input_file_path, 'r', encoding='utf-8') as f:
 print(f"Length of dataset in characters: {len(data):,}")
 
 # --- 1. EXPLICITLY DEFINE THE SCENARIO B VOCABULARY ---
-alphabet = ['a', 'b', 'c', 'd', 'e', 'f']
+alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', "W", "X", "Y", "Z"]
 
 # Generate all 36 combinatoric pairs ('aa', 'ab', ..., 'ff')
 combined_pairs = [f"{c1}{c2}" for c1 in alphabet for c2 in alphabet]

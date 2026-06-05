@@ -1,7 +1,7 @@
 # Train a tiny "pico" GPT on our memorization task
-# Run it from the root nanoGPT directory with: python train.py config/train_memo.py
+# Run it from the root nanoGPT directory with: python train.py config/train_2char.py
 vocab_size = 38 # 36 pairs + '=' + '\n'
-out_dir = 'out-memo2'
+out_dir = 'out-2char'
 eval_interval = 500 # Evaluate the model every 500 steps
 eval_iters = 20
 log_interval = 10 # Log training loss every 10 steps

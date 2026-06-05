@@ -245,6 +245,8 @@ if wandb_log and master_process:
     import wandb
     wandb.init(project=wandb_project, name=wandb_run_name, config=config)
 
+bench_start_time = None # Keep track of time.
+
 # training loop
 X, Y = get_batch('train') # fetch the very first batch
 t0 = time.time()
@@ -327,6 +329,41 @@ while True:
     iter_num += 1
     local_iter_num += 1
 
+    if master_process:
+        # 1. Warmup check & Memory Reset at step 100
+        if iter_num == 100:
+            torch.cuda.synchronize()
+            bench_start_time = time.time()
+            # Clear initial model-loading/compilation spikes to get pure training memory
+            if torch.cuda.is_available():
+                torch.cuda.reset_peak_memory_stats()
+            print("Warmup complete. Benchmarking window started (Steps 100 to 10000)...")
+
+        # 2. Final Step Data Collection at step 10000
+        if iter_num == 10000:
+            torch.cuda.synchronize()
+            bench_end_time = time.time()
+            
+            # Calculate training throughput
+            total_train_time = bench_end_time - bench_start_time
+            steps_tracked = 10000 - 100
+            seconds_per_step = total_train_time / steps_tracked
+            
+            # Fetch peak memory utilization
+            peak_mem_gb = torch.cuda.max_memory_allocated() / (1024 ** 3) if torch.cuda.is_available() else 0.0
+            
+            # Get the exact loss from this final step
+            lossf = loss.item() * gradient_accumulation_steps
+            
+            print("\n" + "="*50)
+            print("📊 FINAL TRAINING BENCHMARK REPORT")
+            print("="*50)
+            print(f"Target Vocabulary Size ($V$) : {meta_vocab_size}")
+            print(f"Final Step Cross-Entropy Loss: {lossf:.4f}")
+            print(f"Total Benchmarking Time      : {total_train_time:.2f} seconds")
+            print(f"Average Speed                : {seconds_per_step:.4f} seconds/step")
+            print(f"Peak GPU Memory Used         : {peak_mem_gb:.3f} GB")
+            print("="*50 + "\n")
     # termination conditions
     if iter_num > max_iters:
         break
