@@ -1,9 +1,8 @@
 # Train a tiny "pico" GPT on our memorization task (Scenario A - Character-level)
 # Run it from the root nanoGPT directory with: python train.py config/train_1char.py
 
-vocab_size = 8
 out_dir = 'out_1char'
-eval_interval = 500   # Evaluate the model every 500 steps
+eval_interval = 1000   # Evaluate the model every 1000 steps
 eval_iters = 20
 log_interval = 10     # Log training loss every 10 steps
 

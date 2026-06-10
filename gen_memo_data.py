@@ -1,13 +1,24 @@
 import itertools
+import string
 import random
 import sys
 def gen_memo_data(vocabLength, repeatTimes, fileName):
-    if vocabLength > 52:
-        raise ValueError("vocabLength cannot exceed 52 (26 lowercase + 26 uppercase letters).")
-    if vocabLength > 26:
-        alphabet = [chr(i) for i in range(97, 97 + 26)] + [chr(i) for i in range(65, 65 + (vocabLength - 26))]
-    else:
-        alphabet = [chr(i) for i in range(97, 97 + vocabLength)]
+    character_pool = (
+        string.ascii_lowercase +  # a-z (26)
+        string.ascii_uppercase +  # A-Z (26)
+        string.digits +           # 0-9 (10)
+        string.punctuation        # !, @, #, etc. (32)
+    )
+    character_pool = character_pool.replace('=', ' ')
+    # 2. Check if we need to dynamically inject extra characters
+    if vocabLength > len(character_pool):
+        extra_needed = vocabLength - len(character_pool)
+        # Pull safe, unique extended characters starting from index 161
+        extended_chars = "".join(chr(i) for i in range(161, 161 + extra_needed))
+        character_pool += extended_chars
+
+    character_pool = character_pool[:vocabLength]
+    alphabet = list(character_pool)
     # Inputs and Outputs are direct copys, where they are all 2 letter combinations of the given alphabet.
     inputs = ["".join(p) for p in itertools.product(alphabet, repeat=2)]
     outputs = inputs.copy()

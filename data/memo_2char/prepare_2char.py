@@ -5,7 +5,9 @@ custom multi-character encoder and decoder mappings.
 """
 import os
 import pickle
+import string
 import numpy as np
+import sys
 
 # Ensure paths align with your setup folder
 input_file_path = os.path.join(os.path.dirname(__file__), 'input.txt')
@@ -18,8 +20,30 @@ with open(input_file_path, 'r', encoding='utf-8') as f:
     data = f.read()
 print(f"Length of dataset in characters: {len(data):,}")
 
+
 # --- 1. EXPLICITLY DEFINE THE SCENARIO B VOCABULARY ---
-alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', "W", "X", "Y", "Z"]
+if len(sys.argv) > 1:
+    try:
+        vocabLength = int(sys.argv[1])
+    except ValueError:
+        print("Error: Vocab length argument must be an integer (ie 26, 52, 128).")
+        sys.exit(1)
+else:
+    vocabLength = 26  # Fallback default
+
+character_pool = (
+        string.ascii_lowercase +  # a-z (26)
+        string.ascii_uppercase +  # A-Z (26)
+        string.digits +           # 0-9 (10)
+        string.punctuation        # !, @, #, etc. (32)
+    )
+character_pool = character_pool.replace('=', ' ')  # Remove '=' from the character pool
+if vocabLength > len(character_pool):
+        extra_needed = vocabLength - len(character_pool)
+        # Pull safe, unique extended characters starting from index 161
+        extended_chars = "".join(chr(i) for i in range(161, 161 + extra_needed))
+        character_pool += extended_chars
+alphabet = list(character_pool)
 
 # Generate all 36 combinatoric pairs ('aa', 'ab', ..., 'ff')
 combined_pairs = [f"{c1}{c2}" for c1 in alphabet for c2 in alphabet]

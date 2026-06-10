@@ -26,6 +26,7 @@ import numpy as np
 import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import init_process_group, destroy_process_group
+import matplotlib.pyplot as plt
 
 from model import GPTConfig, GPT
 
@@ -133,6 +134,10 @@ def get_batch(split):
 # init these up here, can override if init_from='resume' (i.e. from a checkpoint)
 iter_num = 0
 best_val_loss = 1e9
+
+# Create lists to track loss history for the final plot
+iterations_history = []
+loss_history = []
 
 # attempt to derive vocab_size from the dataset
 meta_path = os.path.join(data_dir, 'meta.pkl')
@@ -264,6 +269,9 @@ while True:
     if iter_num % eval_interval == 0 and master_process:
         losses = estimate_loss()
         print(f"step {iter_num}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+        # Track the history for our final matplotlib graph
+        iterations_history.append(iter_num)
+        loss_history.append(losses['train'])
         if wandb_log:
             wandb.log({
                 "iter": iter_num,
@@ -284,7 +292,14 @@ while True:
                     'config': config,
                 }
                 print(f"saving checkpoint to {out_dir}")
-                torch.save(checkpoint, os.path.join(out_dir, 'ckpt.pt'))
+                # Save a checkpoint at specific milestones (10k, 20k, 30k) with unique filenames
+                if iter_num in [10000, 20000, 30000]:
+                    milestone_filename = f'ckpt_{iter_num}.pt'
+                    torch.save(checkpoint, os.path.join(out_dir, milestone_filename))
+                    print(f"Saved custom milestone checkpoint: {milestone_filename}")
+                else:
+                    # Otherwise, just overwrite the normal default checkpoint file
+                    torch.save(checkpoint, os.path.join(out_dir, 'ckpt.pt'))
     if iter_num == 0 and eval_only:
         break
 
@@ -367,6 +382,25 @@ while True:
     # termination conditions
     if iter_num > max_iters:
         break
+
+# --- At the very end of the script (after the training loop breaks) ---
+print("Training complete! Generating loss graph...")
+
+plt.figure(figsize=(10, 6))
+plt.plot(iterations_history, loss_history, color='blue', linewidth=1.5, label='Train Loss')
+
+# Dynamic title based on your config directory name
+plt.title(f'Training Loss over Iterations ({out_dir})', fontsize=14, fontweight='bold', pad=15)
+plt.xlabel('Iterations', fontsize=12, labelpad=10)
+plt.ylabel('Loss', fontsize=12, labelpad=10)
+plt.grid(True, linestyle=':', alpha=0.6)
+plt.legend(fontsize=11)
+
+# Save the plot automatically inside your output directory so it doesn't get overwritten
+plot_path = f"{out_dir}/loss_curve.png"
+plt.tight_layout()
+plt.savefig(plot_path, dpi=300)
+print(f"Graph successfully saved to {plot_path}")
 
 if ddp:
     destroy_process_group()

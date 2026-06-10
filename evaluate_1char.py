@@ -1,10 +1,11 @@
 import os
 import pickle
 import torch
+import string
 import sys
 from model import GPTConfig, GPT
 
-# 1. Set your desired vocabulary size (V) via command line argument or default to 26, keep it the same as your training script.
+# 1. Set your desired vocabulary size (V) via command line argument or default to 26
 if len(sys.argv) > 1:
     try:
         V = int(sys.argv[1])
@@ -15,14 +16,26 @@ else:
     V = 26  # Sensible default
 
 # -----------------------------------------------------------------------------
-checkpoint_dir = 'out-memo'      # Your 1-char checkpoint folder
+checkpoint_dir = 'out_1char'      # Your 1-char checkpoint folder
 data_dir = 'data/memo_1char'     # Points to your 1-character folder name!
 input_path = 'input.txt'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # -----------------------------------------------------------------------------
 
 # 1. Define your base alphabet 
-full_alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', "W", "X", "Y", "Z"]
+full_alphabet = (
+        string.ascii_lowercase +  # a-z (26)
+        string.ascii_uppercase +  # A-Z (26)
+        string.digits +           # 0-9 (10)
+        string.punctuation        # !, @, #, etc. (32)
+    )
+
+if V > len(full_alphabet):
+    extra_needed = V - len(full_alphabet)
+    extended_chars = "".join(chr(i) for i in range(161, 161 + extra_needed))
+    full_alphabet += extended_chars
+
+full_alphabet = full_alphabet.replace('=', ' ')
 base_chars = full_alphabet[:V]  # Use only the first V characters based on your vocab size
 
 # 2. Build a lookup dictionary of true pairings from input.txt
@@ -32,10 +45,13 @@ if not os.path.exists(input_path):
 
 with open(input_path, 'r', encoding='utf-8') as f:
     for line in f:
-        line = line.strip()
+        # CRITICAL FIX: Only strip the trailing newline character!
+        # Do not use a generic .strip() which kills your space characters.
+        line = line.rstrip('\n')
         if '=' in line:
             prompt_side, target_side = line.split('=')
-            true_pairs[prompt_side.strip()] = target_side.strip()
+            # Retain potential spaces inside the actual token representations
+            true_pairs[prompt_side] = target_side
 
 # 3. Generate all 2-character prompt combinations directly
 test_prompts = [c1 + c2 for c1 in base_chars for c2 in base_chars]
@@ -53,7 +69,7 @@ stoi, itos = meta['stoi'], meta['itos']
 decode = lambda l: ''.join([itos[i] for i in l])
 
 # 5. Load the trained 1-character model from your checkpoint folder
-ckpt_path = os.path.join(checkpoint_dir, 'ckpt.pt')
+ckpt_path = os.path.join(checkpoint_dir, 'ckpt_30000.pt')
 print(f"Loading 1-Character checkpoint from {ckpt_path}...")
 checkpoint = torch.load(ckpt_path, map_location=device)
 gptconf = GPTConfig(**checkpoint['model_args'])
@@ -101,11 +117,11 @@ for idx, prompt in enumerate(test_prompts):
     full_output = decode(y[0].tolist())
     
     if '=' in full_output:
-        predicted_target = full_output.split('=')[1].strip()
+        predicted_target = full_output.split('=')[1]
     else:
-        predicted_target = full_output.replace(prompt, "").replace("=", "").strip()
+        predicted_target = full_output.replace(prompt, "").replace("=", "")
         
-    predicted_target = predicted_target.replace('\n', '').strip()
+    predicted_target = predicted_target.replace('\n', '')
     ground_truth = true_pairs[prompt]
     
     if predicted_target == ground_truth:
@@ -129,7 +145,7 @@ if failed_samples:
     for f_prompt, f_pred, f_truth in failed_samples[:10]:
         print(f"[FAIL] {f_prompt}={f_pred} (Expected: {f_truth})")
     if len(failed_samples) > 10:
-        print(f"  ... and {len(failed_samples) - 10} more failures hidden to preserve terminal buffer.")
+        print(f"   ... and {len(failed_samples) - 10} more failures hidden to preserve terminal buffer.")
 else:
     print("Zero failures logged.")
 print("-" * 60)
